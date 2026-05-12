@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Alternative web.config using wfastcgi instead of HttpPlatformHandler -->
+<configuration>
+  <system.webServer>
+    <handlers>
+      <add name="PythonHandler" path="*" verb="*" modules="FastCgiModule" scriptProcessor="C:\Python311\python.exe|C:\Python311\Lib\site-packages\wfastcgi.py" resourceType="Unspecified" requireAccess="Script" />
+    </handlers>
+    
+    <!-- Set larger upload limits for 1GB files -->
+    <security>
+      <requestFiltering>
+        <requestLimits maxAllowedContentLength="1073741824" />
+      </requestFiltering>
+    </security>
+    
+    <!-- URL Rewrite rules for React SPA -->
+    <rewrite>
+      <rules>
+        <rule name="ReactRouter" stopProcessing="true">
+          <match url=".*" />
+          <conditions logicalGrouping="MatchAll">
+            <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+            <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+            <add input="{REQUEST_URI}" pattern="^/api/" negate="true" />
+          </conditions>
+          <action type="Rewrite" url="/" />
+        </rule>
+      </rules>
+    </rewrite>
+  </system.webServer>
+  
+  <appSettings>
+    <add key="PYTHONPATH" value="C:\inetpub\wwwroot\SplitterRedo\PythonProject2" />
+    <add key="WSGI_HANDLER" value="app.app" />
+    <add key="WSGI_LOG" value="C:\inetpub\wwwroot\SplitterRedo\logs\wfastcgi.log" />
+  </appSettings>
+  
+  <system.web>
+    <httpRuntime maxRequestLength="1048576" executionTimeout="1800" />
+  </system.web>
+</configuration>
+
