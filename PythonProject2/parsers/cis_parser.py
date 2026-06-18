@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from .base_parser import BaseParser
 
 logger = logging.getLogger(__name__)
@@ -12,6 +12,25 @@ class CISParser(BaseParser):
         super().__init__("CIS")
         self.separator = '^'
         self.min_fields = 3
+    
+    @staticmethod
+    def detect_rtp_type(file_content: str, filename: str = '') -> Optional[str]:
+        """Detect RTP or NONRTP from uploaded filename or file content."""
+        text = f"{filename}\n{file_content}".upper()
+        # Check NONRTP first; plain substring match handles names like BC020260605AM_RTP
+        if 'NONRTP' in text:
+            return 'NONRTP'
+        if 'RTP' in text:
+            return 'RTP'
+        return None
+    
+    @staticmethod
+    def apply_rtp_type_to_result(result: Dict[str, Any], rtp_type: str) -> None:
+        """Attach RTP type to parse result and all ATM groups."""
+        result['rtp_type'] = rtp_type
+        for group in result.get('grouped_data', {}).values():
+            if isinstance(group, dict):
+                group['rtp_type'] = rtp_type
     
     def parse_file(self, file_content: str) -> Dict[str, Any]:
         """Parse CIS transaction file"""
@@ -73,6 +92,10 @@ class CISParser(BaseParser):
             
             logger.info(f"CIS processing completed. Found {len(grouped_data)} ATM references, total amount: {total_amount}")
             
+            rtp_type = self.detect_rtp_type(file_content)
+            if rtp_type:
+                logger.info(f"CIS file detected as {rtp_type}")
+            
             # Create individual transactions list for frontend compatibility
             individual_transactions = []
             for atm_ref, group in grouped_data.items():
@@ -93,7 +116,7 @@ class CISParser(BaseParser):
                             'payment_mode': self.payment_mode
                         })
             
-            return {
+            result = {
                 'grouped_data': grouped_data,
                 'individual_transactions': individual_transactions,
                 'raw_contents': raw_contents,
@@ -101,6 +124,11 @@ class CISParser(BaseParser):
                 'total_amount': total_amount,
                 'total_transactions': len([line for line in raw_contents if line.strip()]),
             }
+            
+            if rtp_type:
+                self.apply_rtp_type_to_result(result, rtp_type)
+            
+            return result
             
         except Exception as e:
             logger.error(f"Error parsing CIS file: {str(e)}")

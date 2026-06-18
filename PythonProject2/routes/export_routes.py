@@ -124,6 +124,8 @@ def generate_comprehensive_report():
         original_filename = data.get('original_filename', 'transactions')
         payment_mode = data.get('payment_mode', 'Unknown')
         detected_header = data.get('detected_header', None)
+        rtp_type = data.get('rtp_type', None)
+        product_suffix = data.get('product_suffix', None)
         
         if not processed_data:
             return jsonify({'error': 'No processed data provided'}), 400
@@ -135,7 +137,9 @@ def generate_comprehensive_report():
             raw_contents=raw_contents,
             original_filename=original_filename,
             payment_mode=payment_mode,
-            detected_header=detected_header
+            detected_header=detected_header,
+            rtp_type=rtp_type,
+            product_suffix=product_suffix
         )
         
         # Read zip file

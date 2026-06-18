@@ -2,6 +2,8 @@ from flask import request, jsonify
 import logging
 from werkzeug.utils import secure_filename
 from typing import Type, Dict, Any, Tuple
+from parsers.cis_parser import CISParser
+from parsers.ecpay_parser import EcpayParser
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +79,18 @@ class GenericFileProcessor:
             
             # Parse the file
             result = parser.parse_file(file_content)
+            
+            # CIS: also check uploaded filename for RTP / NONRTP markers
+            if isinstance(parser, CISParser):
+                rtp_type = CISParser.detect_rtp_type(file_content, original_filename)
+                if rtp_type:
+                    CISParser.apply_rtp_type_to_result(result, rtp_type)
+            
+            # ECPAY: check uploaded filename for ePRIME / PRIMEWATER markers
+            if isinstance(parser, EcpayParser):
+                product_suffix = EcpayParser.detect_product_suffix(file_content, original_filename)
+                if product_suffix:
+                    EcpayParser.apply_product_suffix_to_result(result, product_suffix)
             
             # Add filename to result
             result['original_filename'] = original_filename

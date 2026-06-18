@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from .base_parser import BaseParser
 
 logger = logging.getLogger(__name__)
@@ -16,6 +16,24 @@ class EcpayParser(BaseParser):
         self.amount_field_index = 6   # Field 7 (0-indexed)
         self.date_field_index = 1     # Field 2 (0-indexed) - date with time
         self.date_field_index_2 = 2   # Field 3 (0-indexed) - date without time
+    
+    @staticmethod
+    def detect_product_suffix(file_content: str, filename: str = '') -> Optional[str]:
+        """Detect ePRIME (EPR) or PRIMEWATER (PIC) from filename or file content."""
+        text = f"{filename}\n{file_content}".upper()
+        if 'PRIMEWATER' in text:
+            return 'PIC'
+        if 'EPRIME' in text:
+            return 'EPR'
+        return None
+    
+    @staticmethod
+    def apply_product_suffix_to_result(result: Dict[str, Any], product_suffix: str) -> None:
+        """Attach product suffix to parse result and all ATM groups."""
+        result['product_suffix'] = product_suffix
+        for group in result.get('grouped_data', {}).values():
+            if isinstance(group, dict):
+                group['product_suffix'] = product_suffix
     
     def parse_file(self, file_content: str) -> Dict[str, Any]:
         """Parse ECPay transaction file"""
@@ -76,6 +94,10 @@ class EcpayParser(BaseParser):
             
             logger.info(f"ECPAY processing completed. Found {len(grouped_data)} ATM references, total amount: {total_amount}")
             
+            product_suffix = self.detect_product_suffix(file_content)
+            if product_suffix:
+                logger.info(f"ECPAY file detected as {product_suffix}")
+            
             # Also create individual transactions list for frontend compatibility
             individual_transactions = []
             for group_key, group in grouped_data.items():
@@ -97,7 +119,7 @@ class EcpayParser(BaseParser):
                             'is_paygo': group.get('is_paygo', False)
                         })
             
-            return {
+            result = {
                 'grouped_data': grouped_data,
                 'individual_transactions': individual_transactions,
                 'raw_contents': raw_contents,
@@ -105,6 +127,11 @@ class EcpayParser(BaseParser):
                 'total_amount': total_amount,
                 'total_transactions': len(raw_contents)
             }
+            
+            if product_suffix:
+                self.apply_product_suffix_to_result(result, product_suffix)
+            
+            return result
             
         except Exception as e:
             logger.error(f"Error parsing ECPAY file: {str(e)}")
@@ -490,6 +517,14 @@ Field1,Field2,03/16/2025 03:15:22 AM,03/16/2025,Field5,987654321098,250.75"""
                 'detection_pattern': 'PAY&GO or PAYGO (case insensitive)',
                 'folder_structure': 'PAY&GO_ATMREF_paymentmode (instead of ATM_ATMREF_paymentmode)',
                 'example': 'PAY&GO,10/21/2025 10:52:56 PM,10/21/2025,4B085675774B,651405200287,06026681571562,762.0000'
+            },
+            'product_suffix_support': {
+                'description': 'ePRIME and PRIMEWATER files are labeled in split reports',
+                'split_filename_format': 'ATM_{atm_ref}_ECPAY_EPR.txt or ATM_{atm_ref}_ECPAY_PIC.txt',
+                'detection': {
+                    'ePRIME': 'EPR suffix',
+                    'PRIMEWATER': 'PIC suffix'
+                }
             },
             'date_format': {
                 'input': 'MM/DD/YYYY HH:MM:SS AM/PM',

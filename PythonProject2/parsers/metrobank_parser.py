@@ -2,7 +2,7 @@
 
 import re
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from .base_parser import BaseParser
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class MetrobankParser(BaseParser):
         self.amount_field_index = 3   # Field 4 (0-indexed) - amount (with letters)
         self.date_field_index = -1    # Date is at the end of the line
     
-    def validate_file(self, lines: List[str]) -> tuple[bool, str]:
+    def validate_file(self, lines: List[str]) -> Tuple[bool, str]:
         """Validate if file matches Metrobank format"""
         try:
             valid_lines = 0

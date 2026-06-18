@@ -57,6 +57,11 @@ def get_info():
             'Field 2 must contain a valid ATM reference (4+ digits)',
             'Field 3 must contain a valid amount'
         ],
+        'rtp_support': {
+            'description': 'Files containing RTP or NONRTP are labeled in split reports',
+            'split_filename_format': 'ATM_{4digit_atm_ref}_CIS_RTP.txt or ATM_{4digit_atm_ref}_CIS_NONRTP.txt',
+            'detection': 'RTP or NONRTP in uploaded filename or file content'
+        },
         'sample_format': 'Date^ATMReference^Amount'
     })
 

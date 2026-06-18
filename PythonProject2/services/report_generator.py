@@ -7,6 +7,8 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, List
 from parsers.bdo_parser import BDOParser
+from parsers.cis_parser import CISParser
+from parsers.ecpay_parser import EcpayParser
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,8 @@ class ReportGenerator:
         self.temp_dir = None
     
     def generate_report(self, processed_data: Dict[str, Any], raw_contents: List[str], 
-                       original_filename: str, payment_mode: str, detected_header: str = None) -> str:
+                       original_filename: str, payment_mode: str, detected_header: str = None,
+                       rtp_type: str = None, product_suffix: str = None) -> str:
         """
         Generate a comprehensive report with CSV summary and individual ATM files
         
@@ -40,7 +43,10 @@ class ReportGenerator:
             csv_file_path = self._create_csv_summary(processed_data, payment_mode)
             
             # Create individual ATM reports
-            self._create_atm_reports(processed_data, raw_contents, payment_mode, detected_header)
+            self._create_atm_reports(
+                processed_data, raw_contents, payment_mode, detected_header,
+                rtp_type, product_suffix, original_filename
+            )
             
             # Create zip file
             zip_path = self._create_zip_file(original_filename)
@@ -119,8 +125,42 @@ class ReportGenerator:
         return csv_file_path
     
     def _create_atm_reports(self, processed_data: Dict[str, Any], 
-                           raw_contents: List[str], payment_mode: str, detected_header: str = None):
+                           raw_contents: List[str], payment_mode: str, detected_header: str = None,
+                           file_rtp_type: str = None, file_product_suffix: str = None,
+                           original_filename: str = ''):
         """Create individual ATM report files"""
+        
+        filename_suffix = ''
+        if payment_mode and payment_mode.upper() == 'CIS':
+            cis_rtp_type = None
+            for group_data in processed_data.values():
+                if isinstance(group_data, dict) and group_data.get('rtp_type'):
+                    cis_rtp_type = group_data['rtp_type']
+                    break
+            if not cis_rtp_type:
+                cis_rtp_type = file_rtp_type
+            if not cis_rtp_type:
+                cis_rtp_type = CISParser.detect_rtp_type(
+                    '\n'.join(raw_contents or []),
+                    original_filename or ''
+                )
+            if cis_rtp_type:
+                filename_suffix = f'_{cis_rtp_type}'
+        elif payment_mode and payment_mode.upper() == 'ECPAY':
+            ecpay_product_suffix = None
+            for group_data in processed_data.values():
+                if isinstance(group_data, dict) and group_data.get('product_suffix'):
+                    ecpay_product_suffix = group_data['product_suffix']
+                    break
+            if not ecpay_product_suffix:
+                ecpay_product_suffix = file_product_suffix
+            if not ecpay_product_suffix:
+                ecpay_product_suffix = EcpayParser.detect_product_suffix(
+                    '\n'.join(raw_contents or []),
+                    original_filename or ''
+                )
+            if ecpay_product_suffix:
+                filename_suffix = f'_{ecpay_product_suffix}'
         
         for group_key, group_data in processed_data.items():
             if not isinstance(group_data, dict):
@@ -137,8 +177,10 @@ class ReportGenerator:
                 # Use ATM prefix for regular transactions
                 filename_prefix = 'ATM'
             
-            # Create report file path
-            report_path = os.path.join(self.temp_dir, f'{filename_prefix}_{atm_ref}_{payment_mode}.txt')
+            report_path = os.path.join(
+                self.temp_dir,
+                f'{filename_prefix}_{atm_ref}_{payment_mode.upper()}{filename_suffix}.txt'
+            )
             
             with open(report_path, 'w', encoding='utf-8') as f:
                 # Handle SM headers

@@ -110,7 +110,9 @@ const ProcessingResults: React.FC<ProcessingResultsProps> = ({
         processingResult.raw_contents,
         originalFilename,
         paymentMode,
-        processingResult.detected_header
+        processingResult.detected_header,
+        processingResult.rtp_type,
+        processingResult.product_suffix
       );
       
       if (blob) {

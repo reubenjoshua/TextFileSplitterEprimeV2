@@ -16,7 +16,7 @@ class UnionbankParser(BaseParser):
         self.separator = ' '  # Space-separated values
         self.min_fields = 4
     
-    def validate_file(self, lines: List[str]) -> tuple[bool, str]:
+    def validate_file(self, lines: List[str]) -> Tuple[bool, str]:
         """Validate if file matches Unionbank format"""
         try:
             total_lines = sum(1 for line in lines if line.strip())

@@ -533,7 +533,9 @@ class ApiService {
     rawContents: string[], 
     originalFilename: string, 
     paymentMode: string,
-    detectedHeader?: string
+    detectedHeader?: string,
+    rtpType?: string,
+    productSuffix?: string
   ): Promise<Blob | null> {
     try {
       const response = await fetch(`${API_BASE_URL}/export/report`, {
@@ -546,7 +548,9 @@ class ApiService {
           raw_contents: rawContents,
           original_filename: originalFilename,
           payment_mode: paymentMode,
-          detected_header: detectedHeader
+          detected_header: detectedHeader,
+          rtp_type: rtpType,
+          product_suffix: productSuffix
         })
       });
 
