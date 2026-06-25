@@ -1,11 +1,12 @@
 import csv
 import os
+import re
 import tempfile
 import shutil
 import zipfile
 import logging
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from parsers.bdo_parser import BDOParser
 from parsers.cis_parser import CISParser
 from parsers.ecpay_parser import EcpayParser
@@ -177,9 +178,12 @@ class ReportGenerator:
                 # Use ATM prefix for regular transactions
                 filename_prefix = 'ATM'
             
+            date_suffix = self._format_dates_for_filename(group_data.get('dates', []))
+            date_part = f'_{date_suffix}' if date_suffix else ''
+            
             report_path = os.path.join(
                 self.temp_dir,
-                f'{filename_prefix}_{atm_ref}_{payment_mode.upper()}{filename_suffix}.txt'
+                f'{filename_prefix}_{atm_ref}_{payment_mode.upper()}{filename_suffix}{date_part}.txt'
             )
             
             with open(report_path, 'w', encoding='utf-8') as f:
@@ -197,6 +201,60 @@ class ReportGenerator:
                         f.write(formatted_line)
                     else:
                         f.write(f'{line}\n')
+    
+    def _parse_date_for_filename(self, date_str: str) -> Optional[datetime]:
+        """Parse a date string from any payment mode into a datetime object."""
+        if not date_str or str(date_str).strip().upper() == 'N/A':
+            return None
+        
+        cleaned = str(date_str).strip()
+        cleaned = re.split(r'[\s,]', cleaned)[0]
+        
+        date_formats = [
+            '%m/%d/%Y',
+            '%m/%d/%y',
+            '%Y-%m-%d',
+            '%Y%m%d',
+            '%d/%m/%Y',
+            '%d/%m/%y',
+        ]
+        
+        for fmt in date_formats:
+            try:
+                return datetime.strptime(cleaned, fmt)
+            except ValueError:
+                continue
+        
+        return None
+    
+    def _format_dates_for_filename(self, dates: Any) -> str:
+        """Format group dates as mmddyy, joined with underscores when multiple."""
+        if isinstance(dates, set):
+            date_list = list(dates)
+        elif isinstance(dates, list):
+            date_list = dates
+        elif dates:
+            date_list = [dates]
+        else:
+            date_list = []
+        
+        parsed_dates = []
+        seen = set()
+        
+        for date_value in date_list:
+            parsed = self._parse_date_for_filename(date_value)
+            if not parsed:
+                continue
+            
+            formatted = parsed.strftime('%m%d%y')
+            if formatted in seen:
+                continue
+            
+            seen.add(formatted)
+            parsed_dates.append((parsed, formatted))
+        
+        parsed_dates.sort(key=lambda item: item[0])
+        return '_'.join(formatted for _, formatted in parsed_dates)
     
     
     def _format_bdo_line_with_parser(self, line: str) -> str:
