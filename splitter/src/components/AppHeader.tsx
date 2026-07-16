@@ -15,59 +15,59 @@ interface AppHeaderProps {
   additionalButtons?: ActionButton[];
 }
 
-const AppHeader: React.FC<AppHeaderProps> = ({ 
-  title, 
-  subtitle, 
-  showBackButton = false, 
-  onBackClick, 
-  backButtonText = "← Back",
-  additionalButtons = []
+const AppHeader: React.FC<AppHeaderProps> = ({
+  title,
+  subtitle,
+  showBackButton = false,
+  onBackClick,
+  backButtonText = 'Back',
+  additionalButtons = [],
 }) => {
   const getButtonStyles = (variant: 'primary' | 'secondary' = 'secondary') => {
-    const baseStyles = "px-6 py-2 text-sm font-medium rounded-lg transition-colors duration-200";
+    const base =
+      'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900';
     if (variant === 'primary') {
-      return `${baseStyles} bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600`;
+      return `${base} bg-teal-700 text-white hover:bg-teal-800 focus:ring-teal-600 dark:bg-teal-600 dark:hover:bg-teal-500`;
     }
-    return `${baseStyles} text-gray-600 hover:text-gray-900 border border-gray-300 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-white dark:border-gray-600 dark:hover:bg-gray-700`;
+    return `${base} bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 focus:ring-slate-400 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700`;
   };
 
   return (
-    <div className="text-center mb-8">
-      <div className="flex items-center justify-center space-x-3 mb-6">
-        <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-          <span className="text-white font-bold text-xl">S</span>
-        </div>
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white">{title}</h1>
-      </div>
-      
-      {subtitle && (
-        <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          {subtitle}
-        </h2>
-      )}
-      
-      {(showBackButton && onBackClick) || additionalButtons.length > 0 ? (
-        <div className="flex items-center justify-center space-x-3">
-          {showBackButton && onBackClick && (
-            <button
-              onClick={onBackClick}
-              className={getButtonStyles('secondary')}
-            >
-              {backButtonText}
-            </button>
+    <div className="mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
+              {subtitle}
+            </p>
           )}
-          
-          {additionalButtons.map((button, index) => (
-            <button
-              key={index}
-              onClick={button.onClick}
-              className={getButtonStyles(button.variant)}
-            >
-              {button.text}
-            </button>
-          ))}
         </div>
-      ) : null}
+
+        {(showBackButton && onBackClick) || additionalButtons.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {showBackButton && onBackClick && (
+              <button onClick={onBackClick} className={getButtonStyles('secondary')}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                {backButtonText}
+              </button>
+            )}
+            {additionalButtons.map((button, index) => (
+              <button
+                key={index}
+                onClick={button.onClick}
+                className={getButtonStyles(button.variant)}
+              >
+                {button.text}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 };

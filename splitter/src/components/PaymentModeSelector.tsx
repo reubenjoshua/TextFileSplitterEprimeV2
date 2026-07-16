@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 interface PaymentMode {
   id: string;
   name: string;
+  description: string;
+  badge?: string;
 }
 
 const paymentModes: PaymentMode[] = [
-  { id: '', name: 'Select a payment mode' },
-  { id: 'bdo', name: 'BDO' },
-  { id: 'cebuana', name: 'CEBUANA' },
-  { id: 'chinabank', name: 'CHINABANK' },
-  { id: 'ecpay', name: 'ECPAY' },
-  { id: 'metrobank', name: 'METROBANK' },
-  { id: 'unionbank', name: 'UNIONBANK' },
-  { id: 'sm', name: 'SM' },
-  { id: 'pnb', name: 'PNB' },
-  { id: 'cis', name: 'CIS' },
-  { id: 'bancnet', name: 'BANCNET' },
-  { id: 'robinsons', name: 'ROBINSONS' }
+  { id: 'bdo', name: 'BDO', description: 'Pipe-separated BDO transactions' },
+  { id: 'cebuana', name: 'CEBUANA', description: 'Comma-separated Cebuana files' },
+  { id: 'chinabank', name: 'CHINABANK', description: 'China Bank transaction files' },
+  { id: 'ecpay', name: 'ECPAY', description: 'ECPay with PAY&GO support', badge: 'EPR / PIC' },
+  { id: 'metrobank', name: 'METROBANK', description: 'Space-separated Metrobank files' },
+  { id: 'unionbank', name: 'UNIONBANK', description: 'UnionBank transaction files' },
+  { id: 'sm', name: 'SM', description: 'SM payment files with headers' },
+  { id: 'pnb', name: 'PNB', description: 'PNB caret-separated files' },
+  { id: 'cis', name: 'CIS', description: 'CIS Bayad caret-separated', badge: 'RTP' },
+  { id: 'bancnet', name: 'BANCNET', description: 'BancNet transaction files' },
+  { id: 'robinsons', name: 'ROBINSONS', description: 'Robinsons payment files' },
 ];
 
 interface PaymentModeSelectorProps {
@@ -25,81 +26,93 @@ interface PaymentModeSelectorProps {
 }
 
 const PaymentModeSelector: React.FC<PaymentModeSelectorProps> = ({ onModeSelect }) => {
-  const [selectedMode, setSelectedMode] = useState<string>('');
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [search, setSearch] = useState('');
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  const handleModeSelect = (modeId: string, modeName: string) => {
-    if (modeId === '') return; // Don't select the placeholder
-    
-    setSelectedMode(modeName);
-    setIsOpen(false);
-    onModeSelect(modeId);
-  };
-
-  const selectedModeData = paymentModes.find(m => m.name === selectedMode);
+  const filteredModes = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return paymentModes;
+    return paymentModes.filter(
+      (mode) =>
+        mode.name.toLowerCase().includes(query) ||
+        mode.description.toLowerCase().includes(query) ||
+        (mode.badge && mode.badge.toLowerCase().includes(query))
+    );
+  }, [search]);
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="relative">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Select Payment Mode:
+    <div className="w-full max-w-4xl mx-auto">
+      <div className="mb-6">
+        <label htmlFor="mode-search" className="sr-only">
+          Search payment modes
         </label>
-        
         <div className="relative">
-          <button
-            type="button"
-            className="relative w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm pl-3 pr-10 py-3 text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-gray-400 dark:hover:border-gray-500 transition-colors duration-200"
-            onClick={() => setIsOpen(!isOpen)}
+          <svg
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
           >
-            <span className={`block truncate ${selectedMode ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
-              {selectedMode || 'Select a payment mode'}
-            </span>
-            <span className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-              <svg
-                className={`w-5 h-5 text-gray-400 transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </span>
-          </button>
-
-          {isOpen && (
-            <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg max-h-60 rounded-lg py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none border border-gray-200 dark:border-gray-600">
-              {paymentModes.map((mode) => (
-                <button
-                  key={mode.id}
-                  type="button"
-                  className={`w-full text-left px-4 py-2 text-sm cursor-pointer transition-colors duration-150 ${
-                    mode.id === ''
-                      ? 'text-gray-400 dark:text-gray-500 cursor-default'
-                      : selectedMode === mode.name
-                      ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                      : 'text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600'
-                  }`}
-                  onClick={() => handleModeSelect(mode.id, mode.name)}
-                  disabled={mode.id === ''}
-                >
-                  {mode.name}
-                </button>
-              ))}
-            </div>
-          )}
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            id="mode-search"
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search payment modes..."
+            className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent shadow-sm"
+          />
         </div>
-
-        {selectedMode && selectedModeData && (
-          <div className="mt-4 text-center">
-            <div className="inline-flex items-center px-4 py-2 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-lg text-sm font-medium">
-              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              {selectedModeData.name} selected
-            </div>
-          </div>
-        )}
       </div>
+
+      {filteredModes.length === 0 ? (
+        <div className="panel p-10 text-center">
+          <p className="text-slate-600 dark:text-slate-400">No payment modes match “{search}”.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredModes.map((mode) => {
+            const isHovered = hoveredId === mode.id;
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => onModeSelect(mode.id)}
+                onMouseEnter={() => setHoveredId(mode.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                className={`group text-left p-4 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 dark:focus:ring-offset-slate-950 ${
+                  isHovered
+                    ? 'border-teal-500 bg-teal-50/80 dark:bg-teal-950/40 dark:border-teal-500 shadow-md -translate-y-0.5'
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-teal-400 dark:hover:border-teal-600'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <span className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">
+                    {mode.name}
+                  </span>
+                  {mode.badge && (
+                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300">
+                      {mode.badge}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">
+                  {mode.description}
+                </p>
+                <div
+                  className={`mt-3 text-xs font-medium transition-opacity duration-200 ${
+                    isHovered ? 'opacity-100 text-teal-700 dark:text-teal-400' : 'opacity-0'
+                  }`}
+                >
+                  Continue →
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

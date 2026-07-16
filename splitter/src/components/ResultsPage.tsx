@@ -12,32 +12,33 @@ interface ResultsPageProps {
   totalAmount?: number;
 }
 
-const ResultsPage: React.FC<ResultsPageProps> = ({ 
-  results, 
-  isProcessing, 
+const ResultsPage: React.FC<ResultsPageProps> = ({
+  results,
+  isProcessing,
   onBackClick,
   onBackToUpload,
   selectedPaymentMode,
-  totalAmount 
+  totalAmount,
 }) => {
   return (
-    <div className="w-full max-w-6xl mx-auto px-6">
-      <AppHeader 
-        title="Splitter"
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6">
+      <AppHeader
+        title="Results"
+        subtitle="Review transactions and download your split report"
         showBackButton={true}
         onBackClick={onBackClick}
-        backButtonText="← Process Another File"
+        backButtonText="Start over"
         additionalButtons={[
           {
-            text: "📁 Back to Choose Files",
+            text: 'Upload another',
             onClick: onBackToUpload,
-            variant: 'primary'
-          }
+            variant: 'primary',
+          },
         ]}
       />
-      
-      <ProcessingResults 
-        results={results} 
+
+      <ProcessingResults
+        results={results}
         paymentMode={selectedPaymentMode || 'ATM Transactions'}
         isLoading={isProcessing}
         totalAmount={totalAmount}
