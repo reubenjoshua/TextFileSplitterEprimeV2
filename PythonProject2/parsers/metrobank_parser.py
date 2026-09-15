@@ -66,9 +66,10 @@ class MetrobankParser(BaseParser):
             # Exclude lines that are too long (likely Unionbank)
             # Exclude lines starting with 'T' followed by spaces (likely Unionbank footer)
             if (amount_pattern and atm_ref_pattern and len(fields) >= 2 and
-                'UB' not in line and 'UNIONBANK' not in line.upper() and
-                len(line) < 200 and not re.match(r'^T\s+', line)):
-                return True
+                    'UNIONBANK' not in line.upper() and
+                    not re.search(r'\bUB\b', line) and
+                    not re.match(r'^T\s+', line)):
+                    return True
             
             return False
         except:
