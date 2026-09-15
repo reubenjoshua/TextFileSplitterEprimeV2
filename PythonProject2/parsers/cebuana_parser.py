@@ -12,6 +12,7 @@ class CebuanaParser(BaseParser):
         super().__init__("CEBUANA")
         self.separator = ','
         self.min_fields = 7
+        self.expected_fields = 7
         self.atm_ref_field_index = 4  # Field 5 (0-indexed)
         self.amount_field_index = 6   # Field 7 (0-indexed)
         self.date_field_index = 2     # Field 3 (0-indexed)
@@ -26,6 +27,8 @@ class CebuanaParser(BaseParser):
             total_amount = 0.0
             
             logger.info(f"Processing CEBUANA file with {len(lines)} lines")
+
+            self._validate_line_structure(lines)
             
             for line_num, line in enumerate(lines, 1):
                 if not line.strip():
@@ -214,27 +217,98 @@ class CebuanaParser(BaseParser):
             pass
         return False
     
+    def _validate_line_structure(self, lines: List[str]) -> None:
+        """Reject CEBUANA lines with wrong field count or shifted columns."""
+        error_details = []
+
+        for line_num, line in enumerate(lines, 1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            fields = [f.strip() for f in stripped.split(self.separator)]
+            field_count = len(fields)
+
+            # Exact 7 fields required
+            if field_count != self.expected_fields:
+                error_details.append({
+                    'line_num': line_num,
+                    'field_count': field_count,
+                    'line_content': stripped,
+                    'reason': (
+                        f"expected {self.expected_fields} comma-separated fields but found {field_count}. "
+                        f"Likely cause: extra comma inside location/branch name."
+                    )
+                })
+                continue
+
+            # Fields 2 and 3 must be dates (MM/DD/YYYY)
+            if not (self._is_valid_cebuana_date(fields[1]) and self._is_valid_cebuana_date(fields[2])):
+                error_details.append({
+                    'line_num': line_num,
+                    'field_count': field_count,
+                    'line_content': stripped,
+                    'reason': (
+                        "fields 2 and 3 must be dates in MM/DD/YYYY format. "
+                        "An extra comma may have shifted the columns."
+                    )
+                })
+                continue
+
+            # Field 5 (ATM ref) must have digits
+            atm_digits = ''.join(c for c in fields[4] if c.isdigit())
+            if len(atm_digits) < 4:
+                error_details.append({
+                    'line_num': line_num,
+                    'field_count': field_count,
+                    'line_content': stripped,
+                    'reason': "field 5 must contain a valid ATM reference (4+ digits)."
+                })
+                continue
+
+            # Field 7 (amount) must be numeric
+            try:
+                float(fields[6].replace(',', ''))
+            except ValueError:
+                error_details.append({
+                    'line_num': line_num,
+                    'field_count': field_count,
+                    'line_content': stripped,
+                    'reason': "field 7 must contain a valid amount."
+                })
+
+        if error_details:
+            first = error_details[0]
+            more = (
+                f" ({len(error_details) - 1} more malformed line(s) found)"
+                if len(error_details) > 1 else ""
+            )
+            raise ValueError(
+                f"ERROR: Malformed CEBUANA line detected at line {first['line_num']}. "
+                f"{first['reason']}\n"
+                f"Line content: '{first['line_content']}'{more}"
+            )
+    
     def _is_valid_line(self, line: str) -> bool:
         """Check if line matches Cebuana format"""
         try:
             fields = line.split(self.separator)
-            if len(fields) < self.min_fields:
+            if len(fields) != self.expected_fields:
                 return False
             
             # Check for Cebuana-specific patterns
             # Field 2 and 3 should contain dates without time
-            if len(fields) >= 3:
-                field_1 = fields[1].strip()
-                field_2 = fields[2].strip()
-                
-                # Check if fields contain dates without time (MM/DD/YYYY)
-                if (re.match(r'^\d{2}/\d{2}/\d{4}$', field_1) and 
-                    re.match(r'^\d{2}/\d{2}/\d{4}$', field_2)):
-                    return True
-                
-                # Check if this might be an ECPAY file (has time component)
-                if re.search(r'\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}\s+[AP]M', field_1):
-                    return False  # This is ECPAY format, not Cebuana
+            field_1 = fields[1].strip()
+            field_2 = fields[2].strip()
+            
+            # Check if fields contain dates without time (MM/DD/YYYY)
+            if (re.match(r'^\d{2}/\d{2}/\d{4}$', field_1) and 
+                re.match(r'^\d{2}/\d{2}/\d{4}$', field_2)):
+                return True
+            
+            # Check if this might be an ECPAY file (has time component)
+            if re.search(r'\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}\s+[AP]M', field_1):
+                return False  # This is ECPAY format, not Cebuana
             
             return False
         except:
@@ -299,11 +373,12 @@ class CebuanaParser(BaseParser):
             ],
             'validation_rules': [
                 'File must contain comma-separated values',
-                'Each line must have at least 7 fields',
+                'Each line must have exactly 7 fields',
                 'Fields 2 and 3 should contain dates in MM/DD/YYYY format without time',
                 'Field 5 should contain ATM reference (numeric)',
                 'Field 7 should contain amount (numeric)',
-                'Must NOT contain time component in date fields (distinguishes from ECPAY)'
+                'Must NOT contain time component in date fields (distinguishes from ECPAY)',
+                'No extra commas inside location/branch name (shifts all columns)'
             ],
             'distinguishing_features': [
                 'Dates without time component (unlike ECPAY)',

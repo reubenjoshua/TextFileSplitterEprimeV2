@@ -22,7 +22,11 @@ def process_file():
     if success:
         return jsonify(result)
     else:
-        status_code = 400 if 'format' in error_message.lower() else 500
+        lower = error_message.lower()
+        if 'malformed' in lower or 'format' in lower:
+            status_code = 400
+        else:
+            status_code = 500
         return jsonify({'error': error_message}), status_code
 
 @cebuana_bp.route('/info', methods=['GET'])
